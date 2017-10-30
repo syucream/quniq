@@ -15,6 +15,13 @@ const (
 	IntermediateMapSize = 1 * 1024
 )
 
+// memory pools
+var inputPool = sync.Pool{
+	New: func() interface{} {
+		return make([]string, 0, InputBufSize)
+	},
+}
+
 func process(buf []string, wg *sync.WaitGroup, mux *sync.Mutex, result *map[string]int) {
 	defer wg.Done()
 
@@ -27,6 +34,7 @@ func process(buf []string, wg *sync.WaitGroup, mux *sync.Mutex, result *map[stri
 			m[key] = 1
 		}
 	}
+	inputPool.Put(buf)
 
 	// merge uniq values with getting mutex
 	mux.Lock()
@@ -52,26 +60,23 @@ func main() {
 	result := make(map[string]int, OutputMapSize)
 
 	s := bufio.NewScanner(os.Stdin)
-	buf := make([]string, 0, InputBufSize)
 	for {
-		cursor := buf[:0]
+		buf := inputPool.Get().([]string)
+		buf = buf[:0]
 
 		// read lines until buffer is full
 		isContnue := true
-		for i := 0; i < cap(cursor); i++ {
+		for i := 0; i < cap(buf); i++ {
 			isContnue = s.Scan()
 			if !isContnue {
 				break
 			}
-			cursor = append(cursor, s.Text())
+			buf = append(buf, s.Text())
 		}
 
-		// copy and process buffer
-		// NOTE it has allocation and copy cost ...
+		// process buffer
 		wg.Add(1)
-		processBuffer := make([]string, len(cursor))
-		copy(processBuffer, cursor)
-		go process(processBuffer, wg, mux, &result)
+		go process(buf, wg, mux, &result)
 
 		// wait if number of goroutines reach max workers
 		if runtime.NumGoroutine() >= *maxWorkers {
