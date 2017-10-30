@@ -51,7 +51,7 @@ func process(buf []string, wg *sync.WaitGroup, mux *sync.Mutex, result *map[stri
 func main() {
 	// flags
 	enableCount := flag.Bool("c", false, "print with count")
-	maxWorkers := flag.Int("workers", 1, "number of max workers")
+	maxWorkers := flag.Int("max-workers", 1, "number of max workers")
 	flag.Parse()
 
 	// sync primitives and a shared map
