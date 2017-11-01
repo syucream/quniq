@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"strconv"
 	"sync"
 )
 
@@ -58,13 +59,25 @@ func process(buf []string, wg *sync.WaitGroup, mux *sync.Mutex, result *map[stri
 }
 
 func printResult(result map[string]int, enableCount bool, mode PrintMode) {
+	// get width of padding for count value
+	padWidth := 0
+	if enableCount {
+		max := 0
+		for _, v := range result {
+			if v > max {
+				max = v
+			}
+		}
+		padWidth = len(strconv.Itoa(max))
+	}
+
 	for k, v := range result {
 		if (mode == PrintOnlyUnique && v != 1) || (mode == PrintOnlyDuplicated && v == 1) {
 			continue
 		}
 
 		if enableCount {
-			fmt.Printf("%7d %s\n", v, k)
+			fmt.Printf("%*d %s\n", padWidth, v, k)
 		} else {
 			fmt.Printf("%s\n", k)
 		}
