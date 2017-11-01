@@ -24,3 +24,9 @@ Usage of ./quniq:
 ```
 $ cat file | quniq -c -max-workers 2
 ```
+
+## Note
+
+* It doesn't require input data is sorted.
+* Its order of output lines is random.
+
