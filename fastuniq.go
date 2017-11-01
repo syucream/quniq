@@ -15,6 +15,15 @@ const (
 	IntermediateMapSize = 1 * 1024
 )
 
+// print mode
+type PrintMode int
+
+const (
+	PrintOnlyUnique PrintMode = iota
+	PrintOnlyDuplicated
+	PrintBoth
+)
+
 // memory pools
 var inputPool = sync.Pool{
 	New: func() interface{} {
@@ -48,9 +57,25 @@ func process(buf []string, wg *sync.WaitGroup, mux *sync.Mutex, result *map[stri
 	}
 }
 
+func printResult(result map[string]int, enableCount bool, mode PrintMode) {
+	for k, v := range result {
+		if (mode == PrintOnlyUnique && v != 1) || (mode == PrintOnlyDuplicated && v == 1) {
+			continue
+		}
+
+		if enableCount {
+			fmt.Printf("%7d %s\n", v, k)
+		} else {
+			fmt.Printf("%s\n", k)
+		}
+	}
+}
+
 func main() {
 	// flags
 	enableCount := flag.Bool("c", false, "print with count")
+	onlyUnique := flag.Bool("u", false, "output only uniuqe lines")
+	onlyDuplicated := flag.Bool("d", false, "output only duplicated lines")
 	maxWorkers := flag.Int("max-workers", 1, "number of max workers")
 	flag.Parse()
 
@@ -89,14 +114,12 @@ func main() {
 	}
 	wg.Wait()
 
-	if *enableCount {
-		// similar to uniq -c
-		for k, v := range result {
-			fmt.Printf("%7d %s\n", v, k)
-		}
-	} else {
-		for k, _ := range result {
-			fmt.Printf("%s\n", k)
-		}
+	mode := PrintBoth
+	if *onlyUnique && !(*onlyDuplicated) {
+		mode = PrintOnlyUnique
+	} else if !(*onlyUnique) && *onlyDuplicated {
+		mode = PrintOnlyDuplicated
 	}
+
+	printResult(result, *enableCount, mode)
 }
