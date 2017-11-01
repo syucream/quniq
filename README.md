@@ -1,23 +1,26 @@
-# fastuniq
+# quniq
 
-Accelerate uniq with multi process and large amount memory.
+Accelerate uniq with using multi goroutines and large amount of memory.
 
 ## Installation
 
 ```
-$ go get github.com/syucream/fastuniq
+$ go get github.com/syucream/quniq
 ```
 
 ## Usage
 
 ```
+Usage of ./quniq:
   -c    print with count
+  -d    output only duplicated lines
   -max-workers int
         number of max workers (default 1)
+  -u    output only uniuqe lines
 ```
 
 * for example:
 
 ```
-$ cat file | fastuniq -c -workers 2
+$ cat file | quniq -c -max-workers 2
 ```
