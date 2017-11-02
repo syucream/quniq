@@ -12,12 +12,11 @@ import (
 )
 
 const (
-	InputBufSize        = 1 * 1024 * 1024
+	MegaNum             = 1024 * 1024
 	OutputMapSize       = 1 * 1024 * 1024
 	IntermediateMapSize = 1 * 1024
 )
 
-// print mode
 type PrintMode int
 
 const (
@@ -26,33 +25,41 @@ const (
 	PrintBoth
 )
 
-// memory pools
-var inputPool = sync.Pool{
-	New: func() interface{} {
-		return make([]string, 0, InputBufSize)
-	},
+type MovableBuffer struct {
+	pool sync.Pool
+	buf  []string
 }
 
-func process(buf []string, wg *sync.WaitGroup, mux *sync.Mutex, result *map[string]int, caseInsentive bool) {
+func NewMovableBuffer(p sync.Pool, b []string) *MovableBuffer {
+	return &MovableBuffer{
+		pool: p,
+		buf:  b,
+	}
+}
+
+func (mbuf *MovableBuffer) move() {
+	mbuf.pool.Put(mbuf.buf)
+}
+
+func process(mbuf *MovableBuffer, wg *sync.WaitGroup, mux *sync.Mutex, result *map[string]int, caseInsentive bool) {
 	defer wg.Done()
 
-	// pre-uniq per goroutines
+	// 1st level uniq per goroutines
 	m := make(map[string]int, IntermediateMapSize)
-	for _, k := range buf {
+	for _, k := range mbuf.buf {
 		key := k
 		if caseInsentive {
 			key = strings.ToLower(k)
 		}
-
 		if v, ok := m[key]; ok {
 			m[key] = v + 1
 		} else {
 			m[key] = 1
 		}
 	}
-	inputPool.Put(buf)
+	mbuf.move()
 
-	// merge uniq values with getting mutex
+	// 2nd level uniq with getting mutex
 	mux.Lock()
 	defer mux.Unlock()
 	for k, v := range m {
@@ -96,6 +103,7 @@ func main() {
 	onlyUnique := flag.Bool("u", false, "output only uniuqe lines")
 	onlyDuplicated := flag.Bool("d", false, "output only duplicated lines")
 	enableCaseInsentive := flag.Bool("i", false, "enable case insentive comparison")
+	inputBufferWeight := flag.Int("inbuf-weight", 1, "number of input buffer items(used specified value * 1024 * 1024)")
 	maxWorkers := flag.Int("max-workers", 1, "number of max workers")
 	flag.Parse()
 
@@ -104,12 +112,20 @@ func main() {
 	mux := new(sync.Mutex)
 	result := make(map[string]int, OutputMapSize)
 
+	// input buffer pool
+	bufferPool := sync.Pool{
+		New: func() interface{} {
+			return make([]string, 0, *inputBufferWeight*MegaNum)
+		},
+	}
+
 	s := bufio.NewScanner(os.Stdin)
 	for {
-		buf := inputPool.Get().([]string)
+		// get buffer from pool and reset it
+		buf := bufferPool.Get().([]string)
 		buf = buf[:0]
 
-		// read lines until buffer is full
+		// read lines until buffer is full or input reaches EOF
 		isContnue := true
 		for i := 0; i < cap(buf); i++ {
 			isContnue = s.Scan()
@@ -119,11 +135,12 @@ func main() {
 			buf = append(buf, s.Text())
 		}
 
-		// process buffer
+		// move buffer to other goroutine and process
+		mbuf := NewMovableBuffer(bufferPool, buf)
 		wg.Add(1)
-		go process(buf, wg, mux, &result, *enableCaseInsentive)
+		go process(mbuf, wg, mux, &result, *enableCaseInsentive)
 
-		// wait if number of goroutines reach max workers
+		// wait if number of goroutines reach max workers for resource limitation
 		if runtime.NumGoroutine() >= *maxWorkers {
 			wg.Wait()
 		}
@@ -134,6 +151,7 @@ func main() {
 	}
 	wg.Wait()
 
+	// prepare print mode
 	mode := PrintBoth
 	if *onlyUnique && !(*onlyDuplicated) {
 		mode = PrintOnlyUnique

@@ -14,6 +14,9 @@ $ go get github.com/syucream/quniq
 Usage of ./quniq:
   -c    print with count
   -d    output only duplicated lines
+  -i    enable case insentive comparison
+  -inbuf-weight int
+        number of input buffer items(used specified value * 1024 * 1024) (default 1)
   -max-workers int
         number of max workers (default 1)
   -u    output only uniuqe lines
