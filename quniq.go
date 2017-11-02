@@ -7,11 +7,12 @@ import (
 	"os"
 	"runtime"
 	"strconv"
+	"strings"
 	"sync"
 )
 
 const (
-	InputBufSize        = 4 * 1024 * 1024
+	InputBufSize        = 1 * 1024 * 1024
 	OutputMapSize       = 1 * 1024 * 1024
 	IntermediateMapSize = 1 * 1024
 )
@@ -32,12 +33,17 @@ var inputPool = sync.Pool{
 	},
 }
 
-func process(buf []string, wg *sync.WaitGroup, mux *sync.Mutex, result *map[string]int) {
+func process(buf []string, wg *sync.WaitGroup, mux *sync.Mutex, result *map[string]int, caseInsentive bool) {
 	defer wg.Done()
 
 	// pre-uniq per goroutines
 	m := make(map[string]int, IntermediateMapSize)
-	for _, key := range buf {
+	for _, k := range buf {
+		key := k
+		if caseInsentive {
+			key = strings.ToLower(k)
+		}
+
 		if v, ok := m[key]; ok {
 			m[key] = v + 1
 		} else {
@@ -89,6 +95,7 @@ func main() {
 	enableCount := flag.Bool("c", false, "print with count")
 	onlyUnique := flag.Bool("u", false, "output only uniuqe lines")
 	onlyDuplicated := flag.Bool("d", false, "output only duplicated lines")
+	enableCaseInsentive := flag.Bool("i", false, "enable case insentive comparison")
 	maxWorkers := flag.Int("max-workers", 1, "number of max workers")
 	flag.Parse()
 
@@ -114,7 +121,7 @@ func main() {
 
 		// process buffer
 		wg.Add(1)
-		go process(buf, wg, mux, &result)
+		go process(buf, wg, mux, &result, *enableCaseInsentive)
 
 		// wait if number of goroutines reach max workers
 		if runtime.NumGoroutine() >= *maxWorkers {
