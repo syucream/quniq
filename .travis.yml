@@ -1,0 +1,16 @@
+language: go
+before_deploy:
+  - go get -u github.com/laher/goxc
+  - mkdir -p $TRAVIS_BUILD_DIR/dist
+  - goxc -d=$TRAVIS_BUILD_DIR/dist -bc=linux,darwin -tasks=clean-destination,xc,archive,rmbin
+deploy:
+  provider: releases
+  api_key:
+    secure: E+1n82Amew75OJPXdht3oYUERYRS+gdWbAKeeWYTizHHdP0aTvnY9zsxXiuq27pKR2UNExkA+OAOrajmxdt+i0SyA42DkHIEOGnKdOdhnsOP3ejz7u1eo6MzLJn2tbCsUfWMM8gY0UvQ8Ag5rrOdZSXgNa23CZxHGXbwTd4T6f1u80yXaOKoZL+0MZ2Y1SWtNxuWITTdyT1r/8NWFSLm83IGRbaPtTkSda0CMQYQFvptrTJtPNZnHVQuPvk33dDxXPIdpglrlnur+OhTjJ+bSRxYhpJcCdcUVqWLMsWnbe13Eg94klOZYuzsfApEDwZXONVSeqlm0NmKEbGeR479/+8gcqK0w/fzNMmdRZnc1u2zwhgRYZDi9Mbf6em8p8yKuEOLF45tWxPHJ2E/EmO3zk8Hne46s+03z6lqxeXObGiSg6iiLvg0+FfncBZHOSnhCpkIAtdJVKRig9q9KfwxSaSRfMNYfOIXRs3Umsa/+dgUfu7eYlb30UYig/WExoVvFa0FRPxoVrqH8TZANTgGTlJzrJAtP5H76OAFUG8L8lQckx6Y2ZZFWuD83DI1DEHd1eZAgePtIx+/3Z3OVThDRh0kayqrh5d6atMVQg8DzRj6zztxOp+FtZA96pDauDoKcyu86x4lFgCkxXV5XYEYlzbqrXmnR2scKfQ5FvdsrSE=
+  file_glob: true
+  file: "$TRAVIS_BUILD_DIR/dist/**/*.{tar.gz,zip}"
+  on:
+    tags: true
+    repo: syucream/quniq
+    all_branches: true
+    condition: "$TRAVIS_TAG =~ ^v[0-9].*$"
