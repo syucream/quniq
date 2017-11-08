@@ -26,11 +26,11 @@ const (
 )
 
 type MovableBuffer struct {
-	pool sync.Pool
+	pool *sync.Pool
 	buf  []string
 }
 
-func NewMovableBuffer(p sync.Pool, b []string) *MovableBuffer {
+func NewMovableBuffer(p *sync.Pool, b []string) *MovableBuffer {
 	return &MovableBuffer{
 		pool: p,
 		buf:  b,
@@ -136,7 +136,7 @@ func main() {
 		}
 
 		// move buffer to other goroutine and process
-		mbuf := NewMovableBuffer(bufferPool, buf)
+		mbuf := NewMovableBuffer(&bufferPool, buf)
 		wg.Add(1)
 		go process(mbuf, wg, mux, &result, *enableCaseInsentive)
 
