@@ -1,4 +1,8 @@
 language: go
+before_script:
+  - go build
+script:
+  - diff <(sort testdata | uniq | sort) <(./quniq < testdata | sort)
 before_deploy:
   - go get -u github.com/laher/goxc
   - mkdir -p $TRAVIS_BUILD_DIR/dist
